@@ -13,6 +13,7 @@ import { Question } from '../../components/Question';
 import { QuizHeader } from '../../components/QuizHeader';
 import { ConfirmButton } from '../../components/ConfirmButton';
 import { OutlineButton } from '../../components/OutlineButton';
+import Animated, { Easing, interpolate, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
 interface Params {
   id: string;
@@ -31,6 +32,8 @@ export function Quiz() {
 
   const route = useRoute();
   const { id } = route.params as Params;
+
+  const shake = useSharedValue(0);
 
   function handleSkipConfirm() {
     Alert.alert('Pular', 'Deseja realmente pular a questão?', [
@@ -69,6 +72,8 @@ export function Quiz() {
 
     if (quiz.questions[currentQuestion].correct === alternativeSelected) {
       setPoints(prevState => prevState + 1);
+    } else {
+      shakeAnimation();
     }
 
     setAlternativeSelected(null);
@@ -90,6 +95,10 @@ export function Quiz() {
     return true;
   }
 
+  function shakeAnimation() {
+    shake.value = withSequence(withTiming(3, { duration: 400, easing: Easing.bounce }), withTiming(0));
+  }
+
   useEffect(() => {
     const quizSelected = QUIZ.filter(item => item.id === id)[0];
     setQuiz(quizSelected);
@@ -101,6 +110,18 @@ export function Quiz() {
       handleNextQuestion();
     }
   }, [points]);
+
+  const shakeStyledAnimated = useAnimatedStyle(() => {
+    return {
+      transform: [{
+        translateX: interpolate(
+          shake.value,
+          [0, 0.5, 1, 1.5, 2, 2.5, 3],
+          [0, -15, 0, 15, 0, -15, 0]
+        )
+      }]
+    }
+  });
 
   if (isLoading) {
     return <Loading />
@@ -118,12 +139,14 @@ export function Quiz() {
           totalOfQuestions={quiz.questions.length}
         />
 
-        <Question
-          key={quiz.questions[currentQuestion].title}
-          question={quiz.questions[currentQuestion]}
-          alternativeSelected={alternativeSelected}
-          setAlternativeSelected={setAlternativeSelected}
-        />
+        <Animated.View style={shakeStyledAnimated}>
+          <Question
+            key={quiz.questions[currentQuestion].title}
+            question={quiz.questions[currentQuestion]}
+            alternativeSelected={alternativeSelected}
+            setAlternativeSelected={setAlternativeSelected}
+          />
+        </Animated.View>
 
         <View style={styles.footer}>
           <OutlineButton title="Parar" onPress={handleStop} />
